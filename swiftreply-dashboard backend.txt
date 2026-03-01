@@ -1,0 +1,49 @@
+from fastapi import FastAPI, Request, HTTPException
+from pydantic import BaseModel
+import os
+import asyncio
+
+app = FastAPI()
+
+# ==================== PAYMENTS CONFIG ====================
+STRIPE_SECRET = os.getenv("STRIPE_SECRET")
+FLUTTERWAVE_SECRET = os.getenv("FLUTTERWAVE_SECRET")
+MOBILE_MONEY_API_KEY = os.getenv("MOBILE_MONEY_API_KEY")
+BACKEND_URL = os.getenv("BACKEND_URL")
+
+# ==================== SCHEMAS ====================
+class PaymentRequest(BaseModel):
+    business_id: int
+    plan: str  # e.g., 'PRO'
+    amount: float
+
+# ==================== STRIPE PAYMENT ====================
+@app.post("/pay/stripe")
+def pay_stripe(request: PaymentRequest):
+    # Redirect URL for Stripe Checkout session
+    checkout_url = f"https://api.stripe.com/v1/checkout/sessions?business_id={request.business_id}&plan={request.plan}&amount={request.amount}";
+    # Real implementation would use stripe SDK here
+    return {"checkout_url": checkout_url}
+
+# ==================== FLUTTERWAVE PAYMENT ====================
+@app.post("/pay/flutterwave")
+def pay_flutterwave(request: PaymentRequest):
+    # Redirect URL for Flutterwave payment
+    checkout_url = f"https://api.flutterwave.com/v3/payments?business_id={request.business_id}&plan={request.plan}&amount={request.amount}";
+    # Real implementation would use flutterwave SDK here
+    return {"checkout_url": checkout_url}
+
+# ==================== MOBILE MONEY PAYMENT ====================
+@app.post("/pay/mobile-money")
+def pay_mobile_money(request: PaymentRequest):
+    # Simulated mobile money payment link
+    checkout_url = f"https://api.mobilemoney.com/pay?business_id={request.business_id}&plan={request.plan}&amount={request.amount}";
+    return {"checkout_url": checkout_url}
+
+# ==================== PAYMENT WEBHOOKS ====================
+@app.post("/webhook/payment")
+async def payment_webhook(request: Request):
+    body = await request.json();
+    # Verify signature (stripe/flutterwave/mobile money)
+    # Update user plan in database
+    return {"status": "success"};

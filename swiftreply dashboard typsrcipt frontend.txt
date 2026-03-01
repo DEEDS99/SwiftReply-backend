@@ -1,0 +1,90 @@
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import os
+import hmac
+import hashlib
+import asyncio
+
+app = FastAPI()
+
+# ==================== CORS ====================
+origins = [
+    "https://YOUR_FRONTEND_URL",  # replace with deployed frontend URL
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ==================== PAYMENTS CONFIG ====================
+STRIPE_SECRET = os.getenv("STRIPE_SECRET")
+FLUTTERWAVE_SECRET = os.getenv("FLUTTERWAVE_SECRET")
+MOBILE_MONEY_API_KEY = os.getenv("MOBILE_MONEY_API_KEY")
+BACKEND_URL = os.getenv("BACKEND_URL")
+
+# ==================== SCHEMAS ====================
+class PaymentRequest(BaseModel):
+    business_id: int
+    plan: str  # e.g., 'PRO'
+    amount: float
+
+# ==================== STRIPE PAYMENT ====================
+@app.post("/pay/stripe")
+def pay_stripe(request: PaymentRequest):
+    checkout_url = f"https://api.stripe.com/v1/checkout/sessions?business_id={request.business_id}&plan={request.plan}&amount={request.amount}";
+    return {"checkout_url": checkout_url}
+
+# ==================== FLUTTERWAVE PAYMENT ====================
+@app.post("/pay/flutterwave")
+def pay_flutterwave(request: PaymentRequest):
+    checkout_url = f"https://api.flutterwave.com/v3/payments?business_id={request.business_id}&plan={request.plan}&amount={request.amount}";
+    return {"checkout_url": checkout_url}
+
+# ==================== MOBILE MONEY PAYMENT ====================
+@app.post("/pay/mobile-money")
+def pay_mobile_money(request: PaymentRequest):
+    checkout_url = f"https://api.mobilemoney.com/pay?business_id={request.business_id}&plan={request.plan}&amount={request.amount}";
+    return {"checkout_url": checkout_url}
+
+# ==================== WEBHOOK VERIFICATION FUNCTION ====================
+def verify_signature(provider: str, payload: dict, signature: str) -> bool:
+    if provider == 'stripe':
+        secret = STRIPE_SECRET
+    elif provider == 'flutterwave':
+        secret = FLUTTERWAVE_SECRET
+    elif provider == 'mobile_money':
+        secret = MOBILE_MONEY_API_KEY
+    else:
+        return False
+
+    computed = hmac.new(secret.encode(), str(payload).encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(computed, signature)
+
+# ==================== PAYMENT WEBHOOK ====================
+@app.post("/webhook/payment")
+async def payment_webhook(request: Request):
+    body = await request.json()
+    signature = request.headers.get("X-Signature")
+    provider = request.headers.get("X-Provider")  # e.g., stripe, flutterwave, mobile_money
+
+    if not verify_signature(provider, body, signature):
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    business_id = body.get("business_id")
+    plan = body.get("plan")
+
+    # Update user plan in DB (replace with your DB logic)
+    await update_user_plan_in_db(business_id, plan)
+
+    return {"status": "success"}
+
+# ==================== SIMULATED DB UPDATE ====================
+async def update_user_plan_in_db(business_id: int, plan: str):
+    # Replace with actual database logic, e.g., Postgres update
+    print(f"Updating business {business_id} to plan {plan}")
+    await asyncio.sleep(0.1)  # simulate async DB operation
