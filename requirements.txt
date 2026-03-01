@@ -21,4 +21,3 @@ sentry-sdk
 prometheus-fastapi-instrumentator
 slowapi
 stripe
-bla
