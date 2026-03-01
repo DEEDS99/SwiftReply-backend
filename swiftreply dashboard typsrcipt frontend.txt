@@ -10,7 +10,7 @@ app = FastAPI()
 
 # ==================== CORS ====================
 origins = [
-    "https://YOUR_FRONTEND_URL",  # replace with deployed frontend URL
+    "https://swiftreply-frontend-dashboard.onrender.com",  # replace with deployed frontend URL
 ]
 
 app.add_middleware(
@@ -37,12 +37,6 @@ class PaymentRequest(BaseModel):
 @app.post("/pay/stripe")
 def pay_stripe(request: PaymentRequest):
     checkout_url = f"https://api.stripe.com/v1/checkout/sessions?business_id={request.business_id}&plan={request.plan}&amount={request.amount}";
-    return {"checkout_url": checkout_url}
-
-# ==================== FLUTTERWAVE PAYMENT ====================
-@app.post("/pay/flutterwave")
-def pay_flutterwave(request: PaymentRequest):
-    checkout_url = f"https://api.flutterwave.com/v3/payments?business_id={request.business_id}&plan={request.plan}&amount={request.amount}";
     return {"checkout_url": checkout_url}
 
 # ==================== MOBILE MONEY PAYMENT ====================
