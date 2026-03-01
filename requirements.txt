@@ -21,5 +21,4 @@ sentry-sdk
 prometheus-fastapi-instrumentator
 slowapi
 stripe
-flutterwave-python
 bla
